@@ -1,0 +1,11 @@
+streamlit
+pandas
+numpy
+tensorflow
+scikit-learn
+xgboost
+plotly
+fpdf2
+xlsxwriter
+openpyxl
+langchain-groq

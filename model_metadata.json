@@ -1,0 +1,54 @@
+{
+  "trained_at": "2026-04-11T14:29:59.416249",
+  "n_features": 49,
+  "n_samples_train": 14169,
+  "n_samples_test": 4724,
+  "winner": "Voting Ensemble (Manual Soft)",
+  "best_threshold": 0.3674358688807706,
+  "engineered_features": [
+    "missing_count",
+    "risk_density",
+    "safety_score"
+  ],
+  "leaderboard": {
+    "Accuracy": {
+      "Logistic Regression": 0.7405,
+      "XGBoost": 0.7392,
+      "Gradient Boosting": 0.7381,
+      "Neural Network": 0.7407,
+      "Random Forest": 0.717
+    },
+    "F1": {
+      "Logistic Regression": 0.7732,
+      "XGBoost": 0.7726,
+      "Gradient Boosting": 0.7721,
+      "Neural Network": 0.7514,
+      "Random Forest": 0.7581
+    },
+    "AUC-ROC": {
+      "Logistic Regression": 0.8373,
+      "XGBoost": 0.8306,
+      "Gradient Boosting": 0.8274,
+      "Neural Network": 0.829,
+      "Random Forest": 0.804
+    },
+    "Score": {
+      "Logistic Regression": 0.7987,
+      "XGBoost": 0.7949,
+      "Gradient Boosting": 0.7929,
+      "Neural Network": 0.7881,
+      "Random Forest": 0.7728
+    }
+  },
+  "model_files": {
+    "voting_ensemble": "voting_ensemble.pkl",
+    "neural_network": "maintenance_model_v2.keras",
+    "random_forest": "random_forest_model.pkl",
+    "gradient_boosting": "gradient_boosting_model.pkl",
+    "xgboost": "xgboost_model.pkl",
+    "scaler": "scaler_v2.pkl",
+    "features": "features_v2.pkl",
+    "imputer": "imputer_v2.pkl",
+    "threshold": "best_threshold.pkl"
+  }
+}
