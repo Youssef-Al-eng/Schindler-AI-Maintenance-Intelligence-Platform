@@ -1,11 +1,25 @@
-streamlit
-pandas
-numpy
-tensorflow
-scikit-learn
-xgboost
-plotly
-fpdf2
-xlsxwriter
-openpyxl
-langchain-groq
+# ── Core ──────────────────────────────────────
+streamlit==1.45.0
+pandas==2.2.3
+numpy==1.26.4
+ 
+# ── Machine Learning ──────────────────────────
+scikit-learn==1.5.2
+xgboost==2.1.3
+tensorflow==2.17.0
+ 
+# ── AI Chatbot ────────────────────────────────
+langchain-groq==0.2.4
+ 
+# ── Visualization ─────────────────────────────
+plotly==5.24.1
+ 
+# ── Export ────────────────────────────────────
+fpdf2==2.8.2
+xlsxwriter==3.2.0
+openpyxl==3.1.5
+ 
+
+
+
+

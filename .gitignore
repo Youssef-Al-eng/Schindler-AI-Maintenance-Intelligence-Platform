@@ -17,3 +17,11 @@ random_forest_model.pkl
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
+# Environment / secrets
+.env
+
+# Internal documents & datasets (never publish)
+*.docx
+*.pdf
+maintenance_dataset.xlsx
+_screenshot_tmp

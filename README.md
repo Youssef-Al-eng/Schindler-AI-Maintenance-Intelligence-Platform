@@ -1,18 +1,21 @@
 <div align="center">
 
-<img src="Schindler_2.png" alt="Schindler Logo" width="160"/>
+<img src="Schindler_2.png" alt="Schindler Logo" width="140"/>
 
 # Schindler AI Maintenance Intelligence Platform
 
-**Predictive maintenance for elevator fleets — powered by a Voting Ensemble of ML & Deep Learning models**
+**Predictive maintenance for elevator fleets — a soft-voting ensemble of four ML/DL models, wrapped in a full operational web platform.**
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.x-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)](https://streamlit.io/)
-[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-FF6F00?style=flat-square&logo=tensorflow&logoColor=white)](https://tensorflow.org/)
-[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.x-F7931E?style=flat-square&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
-[![License](https://img.shields.io/badge/License-Internal%20Use-6B7A9F?style=flat-square)](./LICENSE)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.45-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.17-FF6F00?style=flat-square&logo=tensorflow&logoColor=white)](https://tensorflow.org/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.5-F7931E?style=flat-square&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
 
-[Features](#-features) · [Model Architecture](#-model-architecture) · [Quick Start](#-quick-start) · [Project Structure](#-project-structure) · [What to Upload](#-what-to-upload-to-github)
+[Dashboard](#-dashboard) · [Features](#-key-capabilities) · [Architecture](#-architecture) · [Quick Start](#-quick-start) · [Project Structure](#-project-structure)
+
+<img src="screenshots/dashboard-final.png" alt="Fleet Intelligence Dashboard" width="900"/>
+
+*Fleet Intelligence Dashboard after a bulk analysis run — risk tiers, score distribution, and unit rankings.*
 
 </div>
 
@@ -20,273 +23,123 @@
 
 ## Overview
 
-The **Schindler AI Maintenance Intelligence Platform** is a full-stack web application that predicts elevator maintenance needs using a soft-voting ensemble of four ML/DL models trained on **23,617 real inspection records**. It provides role-based access for engineers and administrators, bulk fleet analysis, PDF/Excel reporting, and an AI-powered chatbot assistant (ARIA).
+Elevator fleets fail in expensive ways: door mechanisms, safety circuits, and drive components degrade between inspections, and maintenance is usually scheduled by calendar rather than by condition.
 
----
+The **Schindler AI Maintenance Intelligence Platform** predicts maintenance needs from technician inspection checklists using a **soft-voting ensemble** (Random Forest + Gradient Boosting + XGBoost + a Keras neural network) trained on **23,617 real inspection records × 49 features** (46 safety checklist items + 3 engineered features). The application turns those predictions into an operational workflow: role-based access, bulk fleet analysis with unit-level risk ranking, single-unit diagnostics, executive PDF/Excel reporting, and **ARIA** — an LLM assistant that reasons over the live fleet data.
 
-## Features
+## Key Capabilities
 
-### Engineer Workflow
-
-| Module | Description |
+| Area | What is implemented |
 |---|---|
-| **Single Unit Diagnostics** | Enter a technician checklist (Yes/No per feature) and get an instant risk score with a visual gauge |
-| **Bulk Fleet Processor** | Upload an `.xlsx` fleet sheet — all units are scored, ranked, and named (Unit 1, Unit 2, ...) automatically |
-| **Fleet Dashboard** | Auto-populated after any analysis. Shows risk pie, histogram, top-10 units, and a full scatter map |
-| **ARIA Chatbot** | AI advisor (Llama 3.3-70B via Groq) with full fleet data context. Generates schedules, exec reports, and prioritized action plans |
+| **Ensemble prediction** | Soft-voting probabilities from RF + GB + XGB + NN; optimized decision threshold loaded from `best_threshold.pkl` |
+| **Bulk fleet processor** | Upload an inspection workbook → automatic unit numbering, per-unit risk tier, threshold-based maintenance flags |
+| **Single diagnostics** | Interactive technician checklist → instant risk score with gauge and severity-based recommendation |
+| **Fleet dashboard** | Risk distribution, score histogram with fleet-average marker, top-10 highest-risk units, full unit risk map |
+| **Reporting** | Executive PDF report and Excel export of all results |
+| **ARIA assistant** | Groq-hosted LLM (Llama 3.3 70B) with strict access to the live fleet context — unit names, scores, tier counts |
+| **Multi-user platform** | SQLite-backed auth (admin + up to 15 engineers), activity logging, per-engineer upload history, admin analytics |
 
-### Admin Panel
-
-| Feature | Description |
-|---|---|
-| **Command Center** | Platform-wide KPIs: total uploads, diagnostics, logins, units analyzed, and total critical units |
-| **Cross-Engineer Analytics** | Units analyzed per engineer, platform-wide risk distribution, and avg risk trend over time |
-| **Engineer Deep Dive** | Replay any engineer's upload session with full charts and export capability |
-| **Activity Logs** | Per-engineer breakdown of all actions (logins, uploads, diagnostics, chatbot queries) |
-
----
-
-## Model Architecture
-
-> Trained on **23,617 records x 49 features** (46 safety checklist items + 3 engineered features)
-
-### Ensemble
-
-The production model is a **manual soft-voting ensemble** — it averages the probability outputs of all four models:
+## Architecture
 
 ```
-Random Forest  ──┐
-Gradient Boost ──┤──▶  avg(prob)  ──▶  Risk Score  ──▶  Risk Tier
-XGBoost        ──┤
-Neural Network ──┘
+Inspection checklist (.xlsx template)
+            │
+            ▼
+┌─────────────────────────────┐
+│  Ingestion & encoding       │  column sanitization, yes/no mapping,
+│  (app.py · encode_upload)   │  engineered features (missing_count,
+└─────────────┬───────────────┘  risk_density, safety_score)
+              ▼
+┌─────────────────────────────┐
+│  Soft-voting ensemble       │  RF + GB + XGB (scikit-learn/xgboost)
+│  (ElevatorRiskModel)        │  + Keras neural net on scaled features
+└─────────────┬───────────────┘  mean of predicted probabilities
+              ▼
+┌─────────────────────────────┐
+│  Risk tiering & actions     │  Safe / Low / Medium / Critical tiers,
+│  (prob_to_risk + threshold) │  maintenance flags, PDF/Excel exports
+└─────────────┬───────────────┘
+              ▼
+┌─────────────────────────────┐
+│  Operational layer          │  Streamlit UI · SQLite (users, sessions,
+│  (app.py + SQLite)          │  activity) · ARIA assistant (Groq API)
+└─────────────────────────────┘
 ```
 
-### Neural Network Architecture
-
-```
-Input (49) → Dense(256, ReLU) → BatchNorm → Dropout(0.3)
-           → Dense(128, ReLU) → BatchNorm → Dropout(0.3)
-           → Dense(64,  ReLU)
-           → Dense(1, Sigmoid)
-```
-
-Trained with `EarlyStopping` on `val_auc` and `ReduceLROnPlateau`.
-
-### Performance
-
-| Metric | Score |
-|---|---|
-| AUC-ROC | **0.8373** |
-| F1 Score | **0.7732** |
-| Accuracy | 0.7405 |
-| Decision Threshold | **0.3674** *(optimized on validation set — default 0.5 was not used)* |
-
-### Risk Tiers
-
-| Tier | Score Range | Recommended Action |
-|---|---|---|
-| Safe | 0 – 25% | Routine inspection on schedule |
-| Low Risk | 25 – 50% | Monitor; inspect within 30 days |
-| Medium Risk | 50 – 75% | Schedule maintenance within 2–4 weeks |
-| Critical | 75 – 100% | Immediate action — evaluate taking unit offline |
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend / Backend | Streamlit |
-| ML Models | scikit-learn (Random Forest, Gradient Boosting), XGBoost |
-| Deep Learning | TensorFlow / Keras |
-| AI Chatbot | Groq API · `langchain-groq` · Llama 3.3-70B |
-| Database | SQLite (auth, sessions, activity logs) |
-| Charts | Plotly Express & Graph Objects |
-| PDF Export | fpdf2 |
-| Excel Export | xlsxwriter, openpyxl |
-
----
+Model training lives in [`schindler_model_training.ipynb`](schindler_model_training.ipynb), which produces the artifacts loaded at runtime.
 
 ## Quick Start
 
-### 1. Clone the repository
+**Requirements:** Python 3.10–3.12 (a virtual environment is recommended).
 
 ```bash
-git clone https://github.com/your-username/schindler-ai-platform.git
-cd schindler-ai-platform
-```
+# 1) Clone and enter the project
+git clone https://github.com/Youssef-Al-eng/Schindler-AI-Maintenance-Intelligence-Platform.git
+cd Schindler-AI-Maintenance-Intelligence-Platform
 
-### 2. Create and activate a virtual environment
-
-```bash
+# 2) Create a virtual environment and install dependencies
 python -m venv venv
+venv\Scripts\activate            # Windows  (use venv/bin/activate on Linux/macOS)
+pip install -r requirements.txt
 
-# Windows
-venv\Scripts\activate
+# 3) (Optional) enable the ARIA assistant
+copy .env.example .env           # then put your Groq API key inside
+                                 # get a free key at https://console.groq.com
 
-# macOS / Linux
-source venv/bin/activate
-```
-
-### 3. Install dependencies
-
-```bash
-pip install streamlit pandas numpy tensorflow scikit-learn xgboost \
-            plotly fpdf2 xlsxwriter openpyxl langchain-groq
-```
-
-### 4. Place model artifacts
-
-All model files must be in the **same directory as `app.py`**:
-
-```
-schindler-ai-platform/
-├── app.py
-├── scaler_v2.pkl
-├── features_v2.pkl
-├── imputer_v2.pkl
-├── best_threshold.pkl
-├── voting_ensemble.pkl
-├── gradient_boosting_model.pkl
-├── xgboost_model.pkl
-├── maintenance_model_v2.keras
-├── model_metadata.json
-└── random_forest_model.pkl        ← see note below (190 MB)
-```
-
-> **Note on `random_forest_model.pkl` (190 MB):**
-> This file exceeds GitHub's 100 MB limit. Download it from the [Releases](../../releases) page and place it in the root directory before running.
-
-### 5. Run the app
-
-```bash
+# 4) Run
 streamlit run app.py
 ```
 
-Open [http://localhost:8501](http://localhost:8501) in your browser.
+The app opens at `http://localhost:8501`. Sign in with the demo admin account (**admin / admin2026**) or register an engineer account from the login screen.
 
-### 6. Default credentials
+> **Model artifacts:** the trained models (`*.pkl`, `*.keras`) are not committed — they are produced by running the training notebook. `model_metadata.json` documents the training configuration.
 
-| Role | Username | Password |
+## Configuration
+
+| Variable | Required | Purpose |
 |---|---|---|
-| Admin | `admin` | `admin2026` |
-| Engineer | Register via the app | — |
+| `GROQ_API_KEY` | No | Enables the ARIA assistant. Can also be entered at runtime in the sidebar (API Configuration). |
 
-> **Change the admin password before any production deployment.**
+Streamlit server/theme settings live in [`.streamlit/config.toml`](.streamlit/config.toml).
 
-### 7. Enable ARIA (AI Chatbot) — optional
+## Usage
 
-1. Get a free API key at [console.groq.com](https://console.groq.com)
-2. Open the sidebar → **API Configuration**
-3. Paste your key (`gsk_...`)
+1. **Bulk Processor** — download the inspection template, fill it with technician checklist responses (Yes/No), upload, and process. Every unit gets a name (`Unit 1 … Unit N`), a risk tier, and a maintenance flag based on the alert threshold.
+2. **Dashboard** — auto-populates from the latest bulk run or single diagnostic.
+3. **Single Diagnostics** — toggle checklist items for one unit and run an instant diagnostic.
+4. **AI Chatbot (ARIA)** — ask for fleet health summaries, prioritized maintenance schedules, or executive summaries; answers cite actual unit names and scores.
+5. **Admin Panel** *(admin only)* — platform-wide statistics, per-engineer deep dives, upload history inspection, and activity logs.
 
----
+## Model Training & Evaluation
+
+- Training pipeline and experiments: `schindler_model_training.ipynb`
+- Dataset: `maintenance_dataset.xlsx` (23,617 inspection records; not committed — see the notebook for preprocessing)
+- Artifacts produced by the notebook: `random_forest_model.pkl`, `gradient_boosting_model.pkl`, `xgboost_model.pkl`, `maintenance_model_v2.keras`, `scaler_v2.pkl`, `features_v2.pkl`, `best_threshold.pkl`
+- Sample inspection workbooks for testing the bulk processor are in [`test/`](test/)
+
+**Limitations (honest scope):** probabilities are tiered by fixed bands (Safe < 25% ≤ Low < 50% ≤ Medium < 75% ≤ Critical); the checklist inputs are binary; no remaining-useful-life estimation; evaluation metrics from the notebook should be re-validated on new fleets before operational use.
 
 ## Project Structure
 
 ```
-schindler-ai-platform/
-│
-├── app.py                            # Main Streamlit application (v5.0)
-├── schindler_model_training.ipynb    # Full ML/DL training pipeline
-│
-├── model_metadata.json               # Model info and feature registry
-├── best_threshold.pkl                # Optimized decision threshold (0.3674)
-├── voting_ensemble.pkl               # Ensemble voting configuration
-├── features_v2.pkl                   # Feature names used during training
-├── scaler_v2.pkl                     # StandardScaler (for NN input)
-├── imputer_v2.pkl                    # Missing value imputer
-│
-├── gradient_boosting_model.pkl       # Gradient Boosting classifier
-├── xgboost_model.pkl                 # XGBoost classifier
-├── maintenance_model_v2.keras        # Keras Neural Network
-├── random_forest_model.pkl           # Random Forest (190 MB — see Releases)
-│
-├── Schindler.png                     # Primary logo
-├── Schindler_2.png                   # Sidebar logo
-│
-├── schindler_platform.db             # Runtime SQLite database (git-ignored)
-└── README.md
+├── app.py                          # Streamlit application (UI, auth, platform logic)
+├── schindler_model_training.ipynb  # Model training & evaluation
+├── requirements.txt
+├── .streamlit/config.toml          # Server + theme configuration
+├── .env.example                    # Environment variable template
+├── Dockerfile / docker-compose.yml # Containerized deployment
+├── test/                           # Sample inspection workbooks
+├── screenshots/                    # Application screenshots
+└── *.pkl / *.keras                 # Trained artifacts (generated by the notebook, gitignored)
 ```
+
+## Roadmap
+
+- [ ] Persist fleet results with versioning and diffing between inspections
+- [ ] Remaining-useful-life estimation when failure-time labels become available
+- [ ] Role-based REST API for integration with CMMS systems
+- [ ] Automated retraining pipeline from registered inspection data
 
 ---
 
-## What to Upload to GitHub
-
-| File | Size | Upload? | Notes |
-|---|---|---|---|
-| `app.py` | 68 KB | Yes | Main application |
-| `schindler_model_training.ipynb` | 559 KB | Yes | Full training pipeline |
-| `model_metadata.json` | 1.4 KB | Yes | — |
-| `best_threshold.pkl` | 21 B | Yes | — |
-| `voting_ensemble.pkl` | 139 B | Yes | — |
-| `features_v2.pkl` | 9 KB | Yes | — |
-| `scaler_v2.pkl` | 10 KB | Yes | — |
-| `imputer_v2.pkl` | 10 KB | Yes | — |
-| `xgboost_model.pkl` | 524 KB | Yes | — |
-| `gradient_boosting_model.pkl` | 970 KB | Yes | — |
-| `maintenance_model_v2.keras` | 743 KB | Yes | — |
-| `Schindler.png` / `Schindler_2.png` | ~4 MB total | Yes | UI assets |
-| `random_forest_model.pkl` | **190 MB** | Release asset only | Exceeds GitHub 100 MB limit |
-| `maintenance_dataset.xlsx` | 3.9 MB | No | Training data — keep private |
-| `schindler_platform.db` | 52 KB | No | Runtime DB with user data |
-| `venv/` | — | No | Never commit virtual environments |
-
-### Recommended `.gitignore`
-
-```gitignore
-# Runtime database
-schindler_platform.db
-
-# Virtual environment
-venv/
-.env
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-
-# Large model file (upload as GitHub Release asset)
-random_forest_model.pkl
-
-# Training data (keep private)
-maintenance_dataset.xlsx
-
-# OS artifacts
-.DS_Store
-Thumbs.db
-```
-
-### Handling the 190 MB Random Forest Model
-
-**Option A — GitHub Releases (recommended)**
-
-Upload `random_forest_model.pkl` manually as an asset when creating a GitHub Release. Then document the download link here for other contributors.
-
-**Option B — Git LFS**
-
-```bash
-git lfs install
-git lfs track "random_forest_model.pkl"
-git add .gitattributes
-git add random_forest_model.pkl
-git commit -m "feat: add RF model via Git LFS"
-git push
-```
-
----
-
-## Authentication & Security
-
-- Admin account is seeded automatically on first run
-- Engineer self-registration is capped at **15 engineers**
-- Passwords are hashed with **SHA-256**
-- All user activity is logged to SQLite: logins, uploads, diagnostics, chatbot queries
-- The database file (`schindler_platform.db`) is git-ignored and never committed
-
----
-
-## License
-
-This project is developed for internal and educational purposes and is not affiliated with or endorsed by **Schindler Group**.
+*Built as an applied machine-learning engineering project. Not affiliated with or endorsed by Schindler Group.*
